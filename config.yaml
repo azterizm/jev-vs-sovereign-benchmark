@@ -28,6 +28,8 @@ pricing:
 
 audit:
   standard: "EU AI Act Article 15 (Accuracy & Deterministic Robustness)"
+  author: "Abdullah Memon"
+  entity: "Memon Systems Ltd (UK Incorporated · No. 17284215)"
   jurisdiction: "UK Primary Legislation"
   target_provisions:
     - "Companies Act 2006 s.382"

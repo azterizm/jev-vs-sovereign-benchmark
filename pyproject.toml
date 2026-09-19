@@ -7,7 +7,7 @@ name = "jev-vs-sovereign-benchmark"
 version = "1.0.0"
 description = "Empirical benchmark comparing TypeSafe AI Jev System One vs Specialized Sovereign RAG Architecture"
 authors = [
-    { name = "Abdiel", email = "research@memonsystems.com" }
+    { name = "Abdullah Memon", email = "abdullah@memonsystems.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"

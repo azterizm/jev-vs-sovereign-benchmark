@@ -1,6 +1,6 @@
 """Publication-grade Benchmark Report Generator.
 
-Authored strictly in the first-person voice of Abdiel Memon (Memon Systems Architecture).
+Authored strictly in the first-person voice of Abdullah Memon (Memon Systems Ltd).
 Generates standalone, authoritative Markdown whitepapers incorporating:
 - Empirical telemetry tables across Nodes 1, 2, and 3
 - The "Cheap Token" Volume Trap scale projections
@@ -29,7 +29,8 @@ class BenchmarkReporter:
         doc = []
         doc.append("# Empirical Benchmark: TypeSafe AI Jev System One vs. My Specialized Sovereign RAG Architecture")
         doc.append("")
-        doc.append("> **Author:** Abdiel Memon (Memon Systems Architecture)  ")
+        doc.append("> **Author:** Abdullah Memon  ")
+        doc.append("> **Entity:** Memon Systems Ltd (UK Incorporated · No. 17284215)  ")
         doc.append(f"> **Audit Seal ID:** `{s.seal_id}`  ")
         doc.append(f"> **Evaluation Standard:** {s.compliance_standard}  ")
         doc.append(f"> **Target Legislation:** UK Primary Legislation (*Companies Act 2006*, *Employment Rights Act 1996*, *Insolvency Act 1986*)  ")

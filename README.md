@@ -1,6 +1,6 @@
 # Empirical Benchmark: TypeSafe AI Jev System One vs. Specialized Sovereign RAG Architecture
 
-> **Author:** Abdiel Memon ([Memon Systems Architecture](https://memonsystems.com))  
+> **Author:** Abdullah Memon ([Memon Systems Ltd](https://memonsystems.com) · UK Incorporated No. 17284215)  
 > **Evaluation Standard:** EU AI Act Article 15 (Accuracy & Deterministic Robustness)  
 > **Target Statute:** UK Primary Legislation (*Companies Act 2006*, *Employment Rights Act 1996*, *Insolvency Act 1986*)  
 > **Hardware Target:** Apple Silicon (MPS Unified Memory) / Linux NVIDIA CUDA  
