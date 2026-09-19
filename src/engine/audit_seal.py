@@ -20,7 +20,7 @@ class AuditSeal(BaseModel):
     seal_id: str
     timestamp_utc: str
     compliance_standard: str = "EU AI Act Article 15 (Accuracy & Deterministic Robustness)"
-    author: str = "Abdullah Memon | Memon Systems Ltd (UK Inc. No. 17284215)"
+    author: str = "Abdullah Memon | Memon Systems Ltd"
     platform_environment: Dict[str, Any]
     dataset_sha256: str
     benchmark_payload_sha256: str

@@ -30,7 +30,7 @@ class BenchmarkReporter:
         doc.append("# Empirical Benchmark: TypeSafe AI Jev System One vs. My Specialized Sovereign RAG Architecture")
         doc.append("")
         doc.append("> **Author:** Abdullah Memon  ")
-        doc.append("> **Entity:** Memon Systems Ltd (UK Incorporated · No. 17284215)  ")
+        doc.append("> **Entity:** Memon Systems Ltd  ")
         doc.append(f"> **Audit Seal ID:** `{s.seal_id}`  ")
         doc.append(f"> **Evaluation Standard:** {s.compliance_standard}  ")
         doc.append(f"> **Target Legislation:** UK Primary Legislation (*Companies Act 2006*, *Employment Rights Act 1996*, *Insolvency Act 1986*)  ")

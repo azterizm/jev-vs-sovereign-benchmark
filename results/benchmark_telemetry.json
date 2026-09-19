@@ -1,9 +1,9 @@
 {
   "audit_seal": {
-    "seal_id": "SEAL-SOV-JEV-2D1B796AFCF2",
-    "timestamp_utc": "2026-09-19T14:02:53.558294+00:00",
+    "seal_id": "SEAL-SOV-JEV-02C109B779E6",
+    "timestamp_utc": "2026-09-19T14:04:43.314125+00:00",
     "compliance_standard": "EU AI Act Article 15 (Accuracy & Deterministic Robustness)",
-    "author": "Abdullah Memon | Memon Systems Ltd (UK Inc. No. 17284215)",
+    "author": "Abdullah Memon | Memon Systems Ltd",
     "platform_environment": {
       "os": "Darwin 25.6.0",
       "architecture": "arm64",
@@ -13,11 +13,11 @@
       "compute_device": "MPS"
     },
     "dataset_sha256": "a570d5aaa1f816263d2c4aad90b1a954539e577f65c1beaa9894d3ca28f2c56b",
-    "benchmark_payload_sha256": "67eb893851b9bb996fcc9460ccc11e5accdeb904efaf25f9063e18e13c59fa96",
-    "canonical_seal_hash": "2d1b796afcf2e268cca51d86999e871463088af4fe8c03f1425757eccc88862f"
+    "benchmark_payload_sha256": "6fbe0c50f499a9082037a3624f2ba8d3d07a3fcb26a475098a3ca2bc7b7ac699",
+    "canonical_seal_hash": "02c109b779e61cadeef3eff941ff036e93188170e5f3a43e0eb71361c8fbce9a"
   },
   "benchmark_result": {
-    "timestamp_utc": "2026-09-19T14:02:50.293897+00:00",
+    "timestamp_utc": "2026-09-19T14:04:39.968580+00:00",
     "run_mode": "dry-run",
     "warmup_iterations": 2,
     "measured_iterations": 5,
@@ -27,22 +27,22 @@
     "node1": {
       "node": "Node 1: Intent Routing & Coordinate Extraction",
       "jev_latency": {
-        "min_ms": 62.43,
-        "max_ms": 112.02,
-        "mean_ms": 92.61,
-        "std_ms": 11.97,
-        "p50_ms": 94.84,
-        "p90_ms": 108.69,
-        "p99_ms": 111.94
+        "min_ms": 64.61,
+        "max_ms": 117.15,
+        "mean_ms": 95.04,
+        "std_ms": 10.97,
+        "p50_ms": 94.74,
+        "p90_ms": 107.4,
+        "p99_ms": 115.45
       },
       "sovereign_latency": {
         "min_ms": 0.04,
-        "max_ms": 0.4,
-        "mean_ms": 0.16,
-        "std_ms": 0.08,
-        "p50_ms": 0.14,
+        "max_ms": 0.35,
+        "mean_ms": 0.17,
+        "std_ms": 0.07,
+        "p50_ms": 0.17,
         "p90_ms": 0.27,
-        "p99_ms": 0.38
+        "p99_ms": 0.33
       },
       "jev_tokens_per_query": 356,
       "sovereign_tokens_per_query": 0,
@@ -90,22 +90,22 @@
       "node": "Node 2: Candidate Passage Reranking",
       "candidates_count": 4,
       "jev_latency": {
-        "min_ms": 44.94,
-        "max_ms": 50.21,
-        "mean_ms": 48.33,
-        "std_ms": 1.41,
-        "p50_ms": 48.29,
-        "p90_ms": 50.06,
-        "p99_ms": 50.2
+        "min_ms": 44.81,
+        "max_ms": 50.8,
+        "mean_ms": 48.75,
+        "std_ms": 1.91,
+        "p50_ms": 49.44,
+        "p90_ms": 50.3,
+        "p99_ms": 50.75
       },
       "sovereign_latency": {
-        "min_ms": 13.46,
-        "max_ms": 32.31,
-        "mean_ms": 21.77,
-        "std_ms": 5.38,
-        "p50_ms": 21.11,
-        "p90_ms": 28.68,
-        "p99_ms": 31.95
+        "min_ms": 14.81,
+        "max_ms": 34.36,
+        "mean_ms": 23.01,
+        "std_ms": 4.93,
+        "p50_ms": 23.02,
+        "p90_ms": 26.34,
+        "p99_ms": 33.56
       },
       "jev_tokens_per_query": 2004,
       "sovereign_tokens_per_query": 0,
@@ -154,22 +154,22 @@
     "node3": {
       "node": "Node 3: Factual Verification & Legal NLI",
       "jev_latency": {
-        "min_ms": 66.38,
-        "max_ms": 120.46,
-        "mean_ms": 95.66,
-        "std_ms": 11.49,
-        "p50_ms": 95.15,
-        "p90_ms": 110.24,
-        "p99_ms": 119.81
+        "min_ms": 61.36,
+        "max_ms": 131.55,
+        "mean_ms": 95.12,
+        "std_ms": 11.4,
+        "p50_ms": 96.89,
+        "p90_ms": 106.51,
+        "p99_ms": 122.94
       },
       "sovereign_latency": {
         "min_ms": 0.0,
-        "max_ms": 46.0,
-        "mean_ms": 20.74,
-        "std_ms": 11.63,
-        "p50_ms": 23.85,
-        "p90_ms": 31.4,
-        "p99_ms": 42.63
+        "max_ms": 46.47,
+        "mean_ms": 21.79,
+        "std_ms": 12.03,
+        "p50_ms": 24.34,
+        "p90_ms": 33.83,
+        "p99_ms": 43.22
       },
       "jev_tokens_per_query": 399,
       "sovereign_tokens_per_query": 0,

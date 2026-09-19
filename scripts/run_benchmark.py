@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Main CLI Entrypoint: Empirical Benchmark Runner.
 
-Author: Abdullah Memon (Memon Systems Ltd · UK Inc. No. 17284215)
+Author: Abdullah Memon (Memon Systems Ltd)
 Usage:
     python3 scripts/run_benchmark.py --dry-run --node all
     python3 scripts/run_benchmark.py --mode live --node all --warmup 5 --iterations 20 --export-markdown results/benchmark_report.md
@@ -94,7 +94,7 @@ def main():
         Panel.fit(
             f"[bold cyan]Jev System One vs. Specialized Sovereign RAG Architecture[/bold cyan]\n"
             f"[dim]Empirical Pipeline Benchmark & EU AI Act Art. 15 Audit Suite[/dim]\n\n"
-            f"• Author:      [green]Abdullah Memon | Memon Systems Ltd (UK Inc. No. 17284215)[/green]\n"
+            f"• Author:      [green]Abdullah Memon | Memon Systems Ltd[/green]\n"
             f"• Mode:        [bold {'yellow' if is_dry_run else 'magenta'}]{'DRY-RUN (Offline Mocks)' if is_dry_run else 'LIVE (OpenRouter API)'}[/]\n"
             f"• Node:        [bold white]{args.node.upper()}[/]\n"
             f"• Trials:      [bold white]{warmup_iters} Warmup + {measured_iters} Measured Trials[/]\n"
