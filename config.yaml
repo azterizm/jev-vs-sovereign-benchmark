@@ -1,0 +1,35 @@
+# Benchmark Configuration: Jev System One vs Specialized Sovereign RAG Architecture
+
+openrouter:
+  api_key_env: "OPENROUTER_API_KEY"
+  base_url: "https://openrouter.ai/api/alpha/decisions"
+  model: "typesafe/jev-1.13"
+  timeout_seconds: 30.0
+  site_url: "https://memonsystems.com"
+  site_name: "Sovereign Legal AI Benchmark"
+
+benchmark:
+  warmup_iterations: 5
+  measured_iterations: 20
+  device: "auto"  # "auto", "mps", "cuda", or "cpu"
+
+models:
+  intent_model: "distilbert-base-uncased"
+  reranker_model: "sentence-transformers/all-MiniLM-L6-v2"
+  nli_model: "cross-encoder/nli-deberta-v3-base"
+  nli_fallback: "cross-encoder/nli-deberta-v3-small"
+
+pricing:
+  # TypeSafe Jev pricing tier as audited
+  jev_input_cost_per_m_tokens: 0.042
+  jev_output_cost_per_m_tokens: 0.042
+  # Sovereign compute cost (amortized fixed server/workstation GPU)
+  sovereign_marginal_cost_per_token: 0.000000
+
+audit:
+  standard: "EU AI Act Article 15 (Accuracy & Deterministic Robustness)"
+  jurisdiction: "UK Primary Legislation"
+  target_provisions:
+    - "Companies Act 2006 s.382"
+    - "Employment Rights Act 1996 s.124"
+    - "Insolvency Act 1986 s.123"

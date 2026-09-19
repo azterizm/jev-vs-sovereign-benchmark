@@ -1,0 +1,104 @@
+{
+  "audit_seal": {
+    "seal_id": "SEAL-SOV-JEV-E3D7914FC2FC",
+    "timestamp_utc": "2026-09-19T13:57:55.175891+00:00",
+    "compliance_standard": "EU AI Act Article 15 (Accuracy & Deterministic Robustness)",
+    "author": "Abdiel Memon (Memon Systems Architecture)",
+    "platform_environment": {
+      "os": "Darwin 25.6.0",
+      "architecture": "arm64",
+      "python_version": "3.14.7",
+      "pytorch_version": "2.13.0",
+      "transformers_version": "5.15.0",
+      "compute_device": "MPS"
+    },
+    "dataset_sha256": "a570d5aaa1f816263d2c4aad90b1a954539e577f65c1beaa9894d3ca28f2c56b",
+    "benchmark_payload_sha256": "075ae9c3a260b49ec6d229a4c1bb29e0ebbdd96617399a954f46f47d792e0a8f",
+    "canonical_seal_hash": "e3d7914fc2fc0a3ac66b31499f45c504a5a229bcb3f3719597c8fe9a3f5d6c17"
+  },
+  "benchmark_result": {
+    "timestamp_utc": "2026-09-19T13:57:44.205373+00:00",
+    "run_mode": "live",
+    "warmup_iterations": 1,
+    "measured_iterations": 1,
+    "resolved_openrouter_model": "typesafe/jev-1.13-20260917",
+    "sovereign_device": "MPS",
+    "openrouter_request_ids": [
+      "gen-dec-1789826266-6sGQBP3J2Nqlrj7ahiq3",
+      "gen-dec-1789826267-wsYlEEMq9uUgdLYLeD5P",
+      "gen-dec-1789826268-iobnu7U49GxwVtZ2h9VL",
+      "gen-dec-1789826268-PSLjzXi02ZpgzNjGF7sX",
+      "gen-dec-1789826269-m5j8d4zQyYefFdIzhYXP",
+      "gen-dec-1789826270-Xpsn81uxymoegGzEQOIL",
+      "gen-dec-1789826271-7ivojExsktFtzNl351jZ",
+      "gen-dec-1789826271-adqYxxns14gHXxC3dmOH",
+      "gen-dec-1789826273-EeoSmVcqU5YxJKN2hKAt",
+      "gen-dec-1789826274-5gS781h8Mbnp9CtCESjm",
+      "gen-dec-1789826275-ZShwFZqda4GYPGVg5aK6"
+    ],
+    "node1": {
+      "node": "Node 1: Intent Routing & Coordinate Extraction",
+      "jev_latency": {
+        "min_ms": 635.94,
+        "max_ms": 1891.61,
+        "mean_ms": 877.12,
+        "std_ms": 384.59,
+        "p50_ms": 712.0,
+        "p90_ms": 1348.65,
+        "p99_ms": 1837.31
+      },
+      "sovereign_latency": {
+        "min_ms": 0.1,
+        "max_ms": 0.37,
+        "mean_ms": 0.19,
+        "std_ms": 0.09,
+        "p50_ms": 0.14,
+        "p90_ms": 0.33,
+        "p99_ms": 0.37
+      },
+      "jev_tokens_per_query": 453,
+      "sovereign_tokens_per_query": 0,
+      "jev_cost_per_query": 1.70604e-05,
+      "sovereign_cost_per_query": 0.0,
+      "jev_coordinate_extraction": false,
+      "sovereign_coordinate_extraction": true,
+      "opex_projections": {
+        "node_name": "Node 1: Intent Routing",
+        "tokens_per_query": 453,
+        "cost_per_query_usd": 1.9026000000000004e-05,
+        "projections": {
+          "10k": {
+            "queries_per_day": 10000,
+            "daily_tokens": 4530000,
+            "daily_cost_usd": 0.19,
+            "monthly_cost_usd": 5.71,
+            "annual_cost_usd": 69.44,
+            "sovereign_marginal_cost_usd": 0.0,
+            "margin_savings_usd": 5.71
+          },
+          "100k": {
+            "queries_per_day": 100000,
+            "daily_tokens": 45300000,
+            "daily_cost_usd": 1.9,
+            "monthly_cost_usd": 57.08,
+            "annual_cost_usd": 694.45,
+            "sovereign_marginal_cost_usd": 0.0,
+            "margin_savings_usd": 57.08
+          },
+          "1M": {
+            "queries_per_day": 1000000,
+            "daily_tokens": 453000000,
+            "daily_cost_usd": 19.03,
+            "monthly_cost_usd": 570.78,
+            "annual_cost_usd": 6944.49,
+            "sovereign_marginal_cost_usd": 0.0,
+            "margin_savings_usd": 570.78
+          }
+        }
+      },
+      "sample_size": 10
+    },
+    "node2": null,
+    "node3": null
+  }
+}

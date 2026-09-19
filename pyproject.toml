@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-vs-sovereign-benchmark"
+version = "1.0.0"
+description = "Empirical benchmark comparing TypeSafe AI Jev System One vs Specialized Sovereign RAG Architecture"
+authors = [
+    { name = "Abdiel", email = "research@memonsystems.com" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.28.0",
+    "torch>=2.1.0",
+    "transformers>=4.38.0",
+    "sentence-transformers>=2.5.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
