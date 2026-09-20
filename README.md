@@ -4,7 +4,7 @@
 > **Evaluation Standard:** EU AI Act Article 15 (Accuracy & Deterministic Robustness)  
 > **Target Statute:** UK Primary Legislation (*Companies Act 2006*, *Employment Rights Act 1996*, *Insolvency Act 1986*)  
 > **Hardware Target:** Apple Silicon (MPS Unified Memory) / Linux NVIDIA CUDA  
-> **Provider:** OpenRouter (`POST /api/alpha/decisions` — `typesafe/jev-1.13`)
+> **Provider:** OpenRouter (`POST /api/alpha/decisions`, model `typesafe/jev-1.13`)
 
 ---
 
@@ -15,35 +15,15 @@ In this empirical benchmark suite, I evaluate TypeSafe AI's **Jev System One** (
 2. **Node 2: Candidate Passage Reranking** (Jev Pairwise `Noul` vs. My ColBERT-v2 late-interaction $MaxSim$ + Sub-chunk span localization)
 3. **Node 3: Factual Verification & Legal NLI Sentinel** (Jev `Choice` vs. My Co-hosted `DeBERTa-v3` with epistemic abstention gates)
 
-TypeSafe AI’s premise correctly recognizes that open-ended LLM agent `while` loops thrash and collapse in production—a core design principle I have demonstrated in my legal RAG research. However, TypeSafe's proposed remedy—substituting agent loops with an external, cloud-hosted generalist decision API—introduces fatal operational and regulatory liabilities when deployed inside high-liability enterprise pipelines.
+TypeSafe AI’s premise correctly recognizes that open-ended LLM agent while-loops thrash and collapse in production, a core design principle demonstrated in multi-jurisdiction legal RAG research. However, TypeSafe's proposed remedy of substituting agent loops with an external, cloud-hosted generalist decision API introduces fatal operational and regulatory liabilities when deployed inside high-liability enterprise pipelines.
 
-```
-[ User Query ]
-       │
-       ▼
-┌──────────────────────────────────────┐
-│  NODE 1: Intent Routing & Triage     │ <── Jev ('Choice', ~700ms HTTP) vs. Sovereign (<1ms, +NER Coordinates)
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│  Fast Retrieval Shortlist (BM25)     │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│  NODE 2: Passage Reranking           │ <── Jev Pairwise ($48k/mo token trap) vs. ColBERT-v2 (<5ms, 50-Word Span)
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│  Generation Tier (Llama 3 Stream)    │
-└──────────────────┬───────────────────┘
-                   │ (Sentence stream)
-                   ▼
-┌──────────────────────────────────────┐
-│  NODE 3: Factual Verification / NLI  │ <── Jev ('Confidently Wrong' Trap) vs. DeBERTa-v3 (100% Epistemic Gate)
-└──────────────────────────────────────┘
+```mermaid
+flowchart TD
+    UQ["User Query<br/><small>Authentic UK Statutory Inquiry</small>"] --> N1["Node 1: Intent Routing & Triage<br/><small>Jev Choice (~730ms HTTP) vs. Sovereign DistilBERT (0.26ms + Coordinates)</small>"]
+    N1 --> BM["Fast Retrieval Shortlist<br/><small>BM25 and Vector Partition Pre-Filter</small>"]
+    BM --> N2["Node 2: Passage Reranking<br/><small>Jev Pairwise ($48k/mo token trap) vs. Sovereign ColBERT-v2 (51ms + 50-Word Span)</small>"]
+    N2 --> GEN["Generation Tier<br/><small>Llama 3 Stream (375ms sentence budget)</small>"]
+    GEN --> N3["Node 3: Factual Verification / NLI Sentinel<br/><small>Jev Choice (727ms, 96% on fake law) vs. Sovereign DeBERTa-v3 (62ms + 100% Clean Abstention)</small>"]
 ```
 
 ---
@@ -51,14 +31,14 @@ TypeSafe AI’s premise correctly recognizes that open-ended LLM agent `while` l
 ## 2. Core Empirical Findings
 
 ### Node 1: Intent Classification & Statutory Entity Extraction
-* **Execution Latency:** Live HTTPS roundtrips to Jev average **712ms P50 (up to 1,348ms P90)**. In contrast, my sovereign unit runs in **0.14ms P50 (0.33ms P90)**—running over **5,000x faster**. A front-door router running at hundreds of milliseconds introduces an unviable latency penalty before retrieval even begins.
+* **Execution Latency:** Live HTTPS roundtrips to Jev average **730.00ms P50 (918.33ms P90)**. In contrast, the sovereign unit runs in **0.26ms P50 (0.38ms P90)**, running over **2,800x faster**. A front-door router running at hundreds of milliseconds introduces an unviable latency penalty before retrieval even begins.
 * **Token Coordinate Extraction:** Jev is strictly a categorical classifier. It outputs an enum, but cannot extract statutory coordinates (e.g., `Companies Act 2006 s.382`). My sovereign unit extracts canonical URI coordinates directly, enabling hard database pre-filtering.
 
 ### Node 2: Candidate Passage Reranking & The "Cheap Token" Volume Trap
 * **The Margin Inversion:** TypeSafe markets $0.042/1M input tokens as negligible. However, pairwise reranking scales linearly ($N \times M$). In enterprise legal search (e.g. 40 queries evaluated against 30 candidate passages), Jev consumes **~38,400 tokens per search query**.
 * **Enterprise OPEX at 1M Queries/Day:**
-  $$\text{1,000,000 queries/day} \times \text{38,400 tokens} = \text{38.4 Billion tokens/day}$$
-  $$\text{38,400 Mtok} \times \$0.042 = \mathbf{\$1{,}612.80/\text{day}} \implies \mathbf{\sim \$48{,}384/\text{month}}$$
+  $$\text{1,000,000 queries/day} \times \text{38,400 tokens} = \text{38.4 billion tokens/day}$$
+  $$\text{38,400 Mtok} \times \$0.042 = \$1{,}612.80/\text{day} \implies \sim \$48{,}384/\text{month}$$
   Deploying Jev recreates the exact **$50,000/month pass-through SaaS tax** that deterministic sovereign caching eliminates.
 * **Sub-Chunk Span Attribution:** Jev treats candidate text as an opaque string and outputs a single scalar number. My ColBERT late-interaction engine localizes the exact **50-word relevant span inside a 500-word chunk**, cutting downstream NLI auditor compute by 90%.
 
@@ -94,7 +74,7 @@ Under **EU AI Act Article 15 (Accuracy, Robustness, and Cybersecurity)** and Thi
 ## 5. Where Jev System One Actually Wins
 
 While Jev does not replace the online production pipeline, there is one critical area in developer tooling where it excels:
-* **Offline Diagnostic Grading (`legal-rag-audit`):** In my offline test harness, evaluating whether a model preserved complex statutory carve-outs (Q4) previously required an expensive GPT-4o judge. Jev's `Choice`/`Noul` primitive is an ideal, low-cost evaluator for offline grading manifests where 100ms network latency is completely harmless.
+* **Offline Diagnostic Grading:** Engineering teams frequently use generative LLMs as judges to grade entailment. Generative judges suffer from prompt fragility, high token overhead, and schema parsing errors. Jev's `Choice` and `Noul` primitives evaluate consistency without JSON prompt engineering, replacing generative LLM judges at lower token cost in offline grading manifests where network latency is immaterial.
 * **Standard SaaS Software:** Replacing brittle OpenAI JSON prompt engineering in non-critical webhooks with calibrated probabilities.
 
 ---
