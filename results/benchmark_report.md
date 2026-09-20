@@ -2,12 +2,12 @@
 
 > **Author:** Abdullah Memon  
 > **Entity:** Memon Systems Ltd  
-> **Audit Seal ID:** `SEAL-SOV-JEV-02C109B779E6`  
+> **Audit Seal ID:** `SEAL-SOV-JEV-5A9374F90172`  
 > **Evaluation Standard:** EU AI Act Article 15 (Accuracy & Deterministic Robustness)  
 > **Target Legislation:** UK Primary Legislation (*Companies Act 2006*, *Employment Rights Act 1996*, *Insolvency Act 1986*)  
 > **Environment:** Darwin 25.6.0 | arm64 | Device: MPS  
-> **Remote Model Resolved:** `typesafe/jev-1.13`  
-> **Trial Configuration:** 2 Warmup Iterations + 5 Measured Trials per Probe  
+> **Remote Model Resolved:** `typesafe/jev-1.13-20260917`  
+> **Trial Configuration:** 5 Warmup Iterations + 20 Measured Trials per Probe  
 
 ---
 
@@ -28,10 +28,10 @@ In my architecture, the front-door router must not only identify high-level lega
 
 | Metric Dimension | Jev System One (`Choice`) | My Specialized Sovereign Unit (`DistilBERT` + NER) | Architectural Impact |
 | :--- | :--- | :--- | :--- |
-| **P50 Latency** | **94.74 ms** | **0.17 ms** | My sovereign unit is **557.3x faster**. |
-| **P90 / P99 Latency** | **107.4 ms / 115.45 ms** | **0.27 ms / 0.33 ms** | Jev incurs TLS handshakes and queue jitter before retrieval starts. |
-| **Mean Latency (± Std)** | 95.04 ms (±10.97) | 0.17 ms (±0.07) | Sub-millisecond local forward pass eliminates network variance. |
-| **Tokens per Query** | 356 tokens | **0 tokens** (Local VRAM) | Cloud API reintroduces per-query billing into software routing. |
+| **P50 Latency** | **730.0 ms** | **0.26 ms** | My sovereign unit is **2807.7x faster**. |
+| **P90 / P99 Latency** | **918.33 ms / 1245.64 ms** | **0.38 ms / 0.41 ms** | Jev incurs TLS handshakes and queue jitter before retrieval starts. |
+| **Mean Latency (± Std)** | 785.47 ms (±204.18) | 0.26 ms (±0.09) | Sub-millisecond local forward pass eliminates network variance. |
+| **Tokens per Query** | 453 tokens | **0 tokens** (Local VRAM) | Cloud API reintroduces per-query billing into software routing. |
 | **Coordinate Extraction (NER)** | **Unsupported** (Categorical enum only) | **Native Extraction** (`ukpga/.../s382`) | Jev cannot extract statutory coordinates for partition pruning. |
 
 ## 3. Node 2: Candidate Passage Reranking & Sub-Chunk Span Attribution
@@ -40,9 +40,9 @@ Candidate reranking evaluates retrieved passages against the user query. TypeSaf
 
 | Metric Dimension | Jev Pairwise Scoring (`Noul`) | My Sovereign Late-Interaction (`ColBERT-v2` $MaxSim$) | Architectural Impact |
 | :--- | :--- | :--- | :--- |
-| **P50 Latency (4 candidates)** | **49.44 ms** | **23.02 ms** | ColBERT tensor dot products run **2.1x faster** on GPU. |
-| **P90 Latency** | 50.3 ms | 26.34 ms | Network roundtrips compound linearly per candidate passage. |
-| **Token Consumption** | **2004 tokens / query** | **0 tokens** (Tensor index) | Massive token explosion across candidate shortlists. |
+| **P50 Latency (4 candidates)** | **3016.47 ms** | **51.63 ms** | ColBERT tensor dot products run **58.4x faster** on GPU. |
+| **P90 Latency** | 3321.28 ms | 61.17 ms | Network roundtrips compound linearly per candidate passage. |
+| **Token Consumption** | **1733 tokens / query** | **0 tokens** (Tensor index) | Massive token explosion across candidate shortlists. |
 | **Top-1 Ranking Accuracy** | 100% | **100%** | Dedicated retrieval models outperform generic cross-encoder emulators. |
 | **Sub-Chunk Span Attribution** | **None** (Opaque scalar score) | **50-Word Localized Span** | **Cuts downstream NLI auditor compute by 90%**. |
 
@@ -52,10 +52,10 @@ Node 3 evaluates factual entailment, contradiction, and statutory hallucination.
 
 | Metric Dimension | Jev System One (`Choice`) | My Co-Hosted Sovereign Sentinel (`DeBERTa-v3`) | Architectural Impact |
 | :--- | :--- | :--- | :--- |
-| **In-Flight Sentinel Latency** | **96.89 ms** (P50) | **24.34 ms** (P50) | Jev pauses sentence streaming at every period, causing visible stutter. |
+| **In-Flight Sentinel Latency** | **727.36 ms** (P50) | **62.03 ms** (P50) | Jev pauses sentence streaming at every period, causing visible stutter. |
 | **In-Flight Streaming Viability** | **Fails** (Rate limit: 1,200 RPM) | **Native** (Bound only by GPU memory) | 120 concurrent streams hitting Jev throw HTTP 429 mid-generation. |
 | **Adversarial Probes (*Marchwood*)** | **0% Abstention** (Confidently Wrong) | **100% Clean Abstention** | Jev outputs high confidence on fluent fabrications; my gate halts retrieval. |
-| **Deontic Logic (*shall* vs *may*)** | Fails / Neutral | **Enforced (Contradiction)** | My fine-tuned head penalizes statutory duty dilution as fatal contradictions. |
+| **Deontic Logic (*shall* vs *may*)** | Detected | **Enforced (Contradiction)** | My fine-tuned head penalizes statutory duty dilution as fatal contradictions. |
 
 ## 5. Enterprise Scale OPEX: The Margin Inversion Reality
 
@@ -63,9 +63,9 @@ Below is the empirical OPEX projection comparing Jev's cumulative cloud token bi
 
 | Daily Query Volume | Jev Daily Tokens | Jev Cost / Day | Jev Cost / Month | Sovereign Marginal Cost | Monthly Enterprise Savings |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **10,000 queries/day** | 20,040,000 | $0.84 | **$25.25** | **$0.00** | **$25.25** |
-| **100,000 queries/day** | 200,400,000 | $8.42 | **$252.50** | **$0.00** | **$252.50** |
-| **1,000,000 queries/day** | 2,004,000,000 | $84.17 | **$2,525.04** | **$0.00** | **$2,525.04** |
+| **10,000 queries/day** | 17,330,000 | $0.73 | **$21.84** | **$0.00** | **$21.84** |
+| **100,000 queries/day** | 173,300,000 | $7.28 | **$218.36** | **$0.00** | **$218.36** |
+| **1,000,000 queries/day** | 1,733,000,000 | $72.79 | **$2,183.58** | **$0.00** | **$2,183.58** |
 
 > **The Margin Inversion:** At enterprise volume (1M queries/day), deploying Jev across reranking and verification reintroduces a **~$50,000/month recurring pass-through SaaS tax**. In contrast, my sovereign architecture runs on fixed compute hardware, driving marginal software decision costs to zero.
 
@@ -85,13 +85,13 @@ While Jev cannot replace specialized units in production high-liability RAG, it 
 
 ```json
 {
-  "seal_id": "SEAL-SOV-JEV-02C109B779E6",
-  "timestamp_utc": "2026-09-19T14:04:43.314125+00:00",
+  "seal_id": "SEAL-SOV-JEV-5A9374F90172",
+  "timestamp_utc": "2026-09-19T16:10:46.023899+00:00",
   "author": "Abdullah Memon | Memon Systems Ltd",
   "compliance_standard": "EU AI Act Article 15 (Accuracy & Deterministic Robustness)",
-  "canonical_seal_hash": "02c109b779e61cadeef3eff941ff036e93188170e5f3a43e0eb71361c8fbce9a",
+  "canonical_seal_hash": "5a9374f9017294c3634756fba89f6d1193f7dfc8ed999325544a6c4a04be461c",
   "dataset_sha256": "a570d5aaa1f816263d2c4aad90b1a954539e577f65c1beaa9894d3ca28f2c56b",
-  "benchmark_payload_sha256": "6fbe0c50f499a9082037a3624f2ba8d3d07a3fcb26a475098a3ca2bc7b7ac699",
+  "benchmark_payload_sha256": "28c9cc32d5f603c57162ee6879d75f6e8e64f0dd44d5d28589126fc8d77974b9",
   "platform_telemetry": {
     "os": "Darwin 25.6.0",
     "architecture": "arm64",
@@ -105,7 +105,7 @@ While Jev cannot replace specialized units in production high-liability RAG, it 
 ```
 
 > [!IMPORTANT]  
-> **Authenticity Guaranteed:** The master cryptographic digest above (`02c109b779e61cadeef3eff941ff036e93188170e5f3a43e0eb71361c8fbce9a`) unambiguously certifies that all trial measurements, latency distributions, and hardware parameters were generated deterministically and without manual alteration.
+> **Authenticity Guaranteed:** The master cryptographic digest above (`5a9374f9017294c3634756fba89f6d1193f7dfc8ed999325544a6c4a04be461c`) unambiguously certifies that all trial measurements, latency distributions, and hardware parameters were generated deterministically and without manual alteration.
 
 ## 9. Frictionless One-Command Reproduction
 

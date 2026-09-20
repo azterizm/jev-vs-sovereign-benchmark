@@ -34,6 +34,7 @@ class MetricDistribution(BaseModel):
     p50_ms: float
     p90_ms: float
     p99_ms: float
+    raw_latencies_ms: List[float] = Field(default_factory=list)
 
 
 class Node1Comparison(BaseModel):
@@ -129,6 +130,7 @@ class BenchmarkRunner:
             p50_ms=round(float(np.percentile(arr, 50)), 2),
             p90_ms=round(float(np.percentile(arr, 90)), 2),
             p99_ms=round(float(np.percentile(arr, 99)), 2),
+            raw_latencies_ms=[round(float(x), 2) for x in latencies],
         )
 
     def _call_jev(
