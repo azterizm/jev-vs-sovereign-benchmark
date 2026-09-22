@@ -103,7 +103,7 @@ class BenchmarkReporter:
                 "Candidate reranking evaluates retrieved passages against the user query. "
                 "TypeSafe markets Jev's $0.042/1M input token pricing as negligible. "
                 "However, pairwise scoring scales linearly with candidate depth ($N \\times M$). "
-                "In enterprise legal search (e.g. 40 queries against 30 candidates), Jev consumes ~38,400 tokens per search query."
+                "In enterprise legal search (evaluating a standard 30-candidate pool), Jev consumes ~38,400 tokens per search query."
             )
             doc.append("")
             doc.append("| Metric Dimension | Jev Pairwise Scoring (`Noul`) | My Sovereign Late-Interaction (`ColBERT-v2` $MaxSim$) | Architectural Impact |")

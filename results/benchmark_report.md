@@ -36,7 +36,7 @@ In my architecture, the front-door router must not only identify high-level lega
 
 ## 3. Node 2: Candidate Passage Reranking & Sub-Chunk Span Attribution
 
-Candidate reranking evaluates retrieved passages against the user query. TypeSafe markets Jev's $0.042/1M input token pricing as negligible. However, pairwise scoring scales linearly with candidate depth ($N \times M$). In enterprise legal search (e.g. 40 queries against 30 candidates), Jev consumes ~38,400 tokens per search query.
+Candidate reranking evaluates retrieved passages against the user query. TypeSafe markets Jev's $0.042/1M input token pricing as negligible. However, pairwise scoring scales linearly with candidate depth ($N \times M$). In enterprise legal search (evaluating a standard 30-candidate pool), Jev consumes ~38,400 tokens per search query.
 
 | Metric Dimension | Jev Pairwise Scoring (`Noul`) | My Sovereign Late-Interaction (`ColBERT-v2` $MaxSim$) | Architectural Impact |
 | :--- | :--- | :--- | :--- |

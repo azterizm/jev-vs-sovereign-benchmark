@@ -20,9 +20,9 @@ flowchart TD
 
 | Node | Jev System One | Sovereign Architecture | Finding |
 | :--- | :--- | :--- | :--- |
-| Intent Routing | 730.00ms P50, 453 tokens, no coordinates | 0.26ms P50, 0 tokens, statutory URI extracted | Over 2,800 times slower. No entity extraction. |
-| Passage Reranking | 3,016.47ms per set, 1,733 tokens | 51.63ms per set, 0 tokens, 50-word span | Over 58 times slower. Token cost inversion at scale. |
-| Factual Verification | 727.36ms P50, 0% abstention on fabrications | 62.03ms P50, 100% clean abstention | Confidently wrong on fictional law. Fails streaming SLA. |
+| Intent Routing | 730.00ms P50 (remote HTTP), 453 tokens, no coordinates | 0.26ms P50 (local in-process), 0 tokens, statutory URI extracted | Over 2,800 times slower in-process. No entity extraction. |
+| Passage Reranking | 3,016.47ms per set (4 candidates, 1,733 tokens; $48k/mo at 30-candidate scale) | 51.63ms per set, 0 tokens, 50-word span | Over 58 times faster on local GPU. Token cost inversion at scale. |
+| Factual Verification | 727.36ms P50 (remote HTTP), 0% abstention on adversarial probe | 62.03ms P50 (local in-process), 100% clean abstention (registry gate + DeBERTa) | Negative ROI. Confidently wrong on fictional law without registry gate. Fails streaming SLA. |
 | Governance | Cloud alias shifts across releases | Frozen weights with SHA-256 seal | Fails EU AI Act Article 15 reproducibility. |
 
 ## Reproduction
