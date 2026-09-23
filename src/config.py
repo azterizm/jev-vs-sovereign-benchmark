@@ -37,14 +37,14 @@ class BenchmarkSettings(BaseModel):
 
 class ModelsSettings(BaseModel):
     intent_model: str = "distilbert-base-uncased"
-    reranker_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    reranker_model: str = "colbert-ir/colbertv2.0"
     nli_model: str = "cross-encoder/nli-deberta-v3-base"
     nli_fallback: str = "cross-encoder/nli-deberta-v3-small"
 
 
 class PricingSettings(BaseModel):
     jev_input_cost_per_m_tokens: float = 0.042
-    jev_output_cost_per_m_tokens: float = 0.042
+    jev_output_cost_per_m_tokens: float = 0.0
     sovereign_marginal_cost_per_token: float = 0.000000
 
 

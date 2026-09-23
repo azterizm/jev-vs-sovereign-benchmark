@@ -53,3 +53,20 @@ def test_client_missing_key_raises():
     client = JevClient(api_key=None)
     with pytest.raises(ValueError, match="OPENROUTER_API_KEY is not set"):
         client.decide(state="query text", questions={})
+
+
+def test_fetch_upstream_latencies_without_key():
+    client = JevClient(api_key=None)
+    assert client.fetch_upstream_latencies(["gen-123"]) == {}
+    assert client.fetch_upstream_latencies([]) == {}
+
+
+def test_response_with_upstream_latency():
+    resp = JevDecisionResponse(
+        model="typesafe/jev-1.13",
+        id="gen-test-1",
+        latency_ms=480.0,
+        upstream_latency_ms=395.0,
+    )
+    assert resp.latency_ms == 480.0
+    assert resp.upstream_latency_ms == 395.0

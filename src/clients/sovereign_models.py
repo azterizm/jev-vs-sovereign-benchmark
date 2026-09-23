@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
+import safetensors.torch
+from huggingface_hub import hf_hub_download
 from transformers import (
     AutoModel,
     AutoModelForSequenceClassification,
@@ -46,7 +48,7 @@ class NLIResult(BaseModel):
 
 
 class SovereignIntentRouter:
-    """Node 1: Local intent classification and statutory coordinate extraction."""
+    """Node 1: Local intent classification and statutory coordinate extraction via 2-tier DistilBERT."""
 
     INTENT_CATEGORIES = ["employment", "company", "insolvency", "general"]
 
@@ -69,19 +71,70 @@ class SovereignIntentRouter:
         ),
         # General pattern: Act Name YYYY section N
         re.compile(
-            r"([A-Z][A-Za-z\s]+Act\s+\d{4})\s+(?:section|s\.)\s*(\d+[A-Za-z]?)",
+            r"((?:[A-Z][A-Za-z]+\s+)+Act\s+\d{4})\s+(?:section|s\.)\s*(\d+[A-Za-z]?)",
             re.IGNORECASE,
         ),
     ]
 
-    def __init__(self, device: str = "cpu"):
+    DOMAIN_ANCHORS = {
+        "company": [
+            "company accounts turnover balance sheet director shareholder share capital articles of association annual return filing",
+            "corporate governance board of directors fiduciary duties dividend distribution register of members Companies Act",
+            "small and medium companies accounting thresholds parent undertaking subsidiary corporate liability statutory audit",
+        ],
+        "employment": [
+            "employment unfair dismissal redundancy employee worker wages notice period contract of employment restrictive covenants",
+            "employment tribunal compensatory award basic award wrongful dismissal disciplinary procedure statutory redundancy payment",
+            "qualifying period of service discrimination workplace harassment minimum wage protective award Employment Rights Act",
+        ],
+        "insolvency": [
+            "insolvency liquidation winding up administration administrative receivership statutory demand inability to pay debts creditor",
+            "debtor company bankrupt floating charge holder petition for administration voluntary arrangement moratorium priority of debts",
+            "corporate insolvency wrongful trading fraudulent trading liquidator appointment insolvency practitioner Insolvency Act",
+        ],
+        "general": [
+            "civil jurisdiction and judgments conflict of laws choice of law private international law court procedure legal precedent",
+            "civil procedure rules CPR court of appeal high court jurisprudence judicial review statutory interpretation legislation",
+            "contract law tort common law remedy damages injunction declaratory judgment cross border litigation",
+        ],
+    }
+
+    def __init__(self, model_id: str = "distilbert-base-uncased", device: str = "cpu"):
         self.device = device
-        # Lightweight zero-shot or lexical intent routing for sub-millisecond execution
-        self.keywords = {
-            "employment": ["dismissal", "employment", "tribunal", "redundancy", "employee", "wage", "era 1996"],
-            "company": ["turnover", "balance sheet", "director", "company", "companies act", "shareholder", "filing"],
-            "insolvency": ["insolvent", "bankruptcy", "winding up", "statutory demand", "debt", "creditor"],
-        }
+        self.model_id = model_id
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        self.model = AutoModel.from_pretrained(model_id).to(self.device)
+        self.model.eval()
+
+        self._init_centroids()
+
+    def _sync(self):
+        if self.device == "mps":
+            torch.mps.synchronize()
+        elif self.device == "cuda":
+            torch.cuda.synchronize()
+
+    def _encode_texts(self, texts: List[str]) -> torch.Tensor:
+        inputs = self.tokenizer(
+            texts, padding=True, truncation=True, max_length=128, return_tensors="pt"
+        ).to(self.device)
+        with torch.no_grad():
+            out = self.model(**inputs)
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            emb = (out.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
+        return emb
+
+    def _init_centroids(self):
+        all_anchor_texts = [text for sublist in self.DOMAIN_ANCHORS.values() for text in sublist]
+        anchor_embs = self._encode_texts(all_anchor_texts)
+        self.ref_mean = anchor_embs.mean(dim=0, keepdim=True)
+
+        self.centroids: Dict[str, torch.Tensor] = {}
+        for domain, texts in self.DOMAIN_ANCHORS.items():
+            embs = self._encode_texts(texts)
+            centered = embs - self.ref_mean
+            mean_vec = centered.mean(dim=0, keepdim=True)
+            self.centroids[domain] = F.normalize(mean_vec, p=2, dim=1)
 
     def extract_coordinates(self, text: str) -> List[str]:
         """Extracts canonical UK statutory coordinate coordinates."""
@@ -98,20 +151,53 @@ class SovereignIntentRouter:
         return list(set(coords))
 
     def route(self, query: str) -> IntentResult:
+        self._sync()
         t0 = time.perf_counter()
         coords = self.extract_coordinates(query)
         q_lower = query.lower()
 
-        scores = {cat: 0.05 for cat in self.INTENT_CATEGORIES}
-        for cat, kws in self.keywords.items():
-            for kw in kws:
-                if kw in q_lower:
-                    scores[cat] += 1.0
+        # Tier 1: Deterministic Statutory Coordinate / Citation Gate
+        statute_domain = None
+        if any("companies act" in c.lower() for c in coords) or "companies act" in q_lower:
+            statute_domain = "company"
+        elif any("employment rights act" in c.lower() for c in coords) or "employment rights act" in q_lower:
+            statute_domain = "employment"
+        elif any("insolvency act" in c.lower() for c in coords) or "insolvency act" in q_lower:
+            statute_domain = "insolvency"
 
-        total = sum(scores.values())
-        probs = {k: v / total for k, v in scores.items()}
-        predicted = max(probs.items(), key=lambda x: x[1])[0]
+        if statute_domain is not None:
+            self._sync()
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            probs = {cat: (0.97 if cat == statute_domain else 0.01) for cat in self.INTENT_CATEGORIES}
+            return IntentResult(
+                intent=statute_domain,
+                probabilities=probs,
+                statutory_coordinates=coords,
+                latency_ms=latency_ms,
+                token_count=len(query.split()),
+            )
 
+        # Tier 2: Neural DistilBERT Mean-Centered Centroid Classifier
+        inputs = self.tokenizer(
+            query, return_tensors="pt", truncation=True, max_length=128
+        ).to(self.device)
+        with torch.no_grad():
+            out = self.model(**inputs)
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            q_emb = (out.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
+            q_centered = F.normalize(q_emb - self.ref_mean, p=2, dim=1)
+
+            scores = {}
+            for dom, cent in self.centroids.items():
+                scores[dom] = torch.mm(q_centered, cent.t()).item()
+
+            tau = 0.15
+            score_tensor = torch.tensor([scores[cat] for cat in self.INTENT_CATEGORIES], device=self.device)
+            prob_tensor = F.softmax(score_tensor / tau, dim=0)
+            probs = {cat: float(prob_tensor[i].item()) for i, cat in enumerate(self.INTENT_CATEGORIES)}
+            predicted = max(probs.items(), key=lambda x: x[1])[0]
+
+        self._sync()
         latency_ms = (time.perf_counter() - t0) * 1000.0
         return IntentResult(
             intent=predicted,
@@ -123,14 +209,22 @@ class SovereignIntentRouter:
 
 
 class SovereignColBERTReranker:
-    """Node 2: Late-interaction tensor MaxSim reranking and sub-chunk span attribution."""
+    """Node 2: Late-interaction tensor MaxSim reranking and sub-chunk span attribution with ColBERTv2."""
 
-    def __init__(self, model_id: str = "sentence-transformers/all-MiniLM-L6-v2", device: str = "cpu"):
+    def __init__(self, model_id: str = "colbert-ir/colbertv2.0", device: str = "cpu"):
         self.device = device
         self.model_id = model_id
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.model = AutoModel.from_pretrained(model_id).to(self.device)
         self.model.eval()
+
+        # Load ColBERT linear projection layer (768 -> 128)
+        weights_file = hf_hub_download(repo_id=model_id, filename="model.safetensors")
+        state_dict = safetensors.torch.load_file(weights_file)
+        self.linear = torch.nn.Linear(768, 128, bias=False).to(self.device)
+        self.linear.weight.data.copy_(state_dict["linear.weight"])
+        self.linear.eval()
+
         self._doc_index: Dict[str, Tuple[torch.Tensor, List[str], str]] = {}
 
     def _sync(self):
@@ -139,14 +233,29 @@ class SovereignColBERTReranker:
         elif self.device == "cuda":
             torch.cuda.synchronize()
 
-    def index_passage(self, candidate_id: str, document: str):
-        """Pre-indexes document token embeddings offline (standard ColBERT/PLAID pattern)."""
-        d_inputs = self.tokenizer(
-            document, return_tensors="pt", truncation=True, max_length=512
+    def encode_query(self, query: str) -> torch.Tensor:
+        """Returns L2-normalized 128-d multi-vector query representation with [unused0] ([Q]) prefix."""
+        q_inputs = self.tokenizer(
+            f"[unused0] {query}", return_tensors="pt", truncation=True, max_length=128
         ).to(self.device)
         with torch.no_grad():
-            d_emb = self.model(**d_inputs).last_hidden_state[0]
-            d_emb = F.normalize(d_emb, p=2, dim=1)
+            q_out = self.model(**q_inputs).last_hidden_state[0]
+            q_proj = self.linear(q_out)
+            return F.normalize(q_proj, p=2, dim=1)
+
+    def encode_document(self, document: str) -> torch.Tensor:
+        """Returns L2-normalized 128-d multi-vector document representation with [unused1] ([D]) prefix."""
+        d_inputs = self.tokenizer(
+            f"[unused1] {document}", return_tensors="pt", truncation=True, max_length=512
+        ).to(self.device)
+        with torch.no_grad():
+            d_out = self.model(**d_inputs).last_hidden_state[0]
+            d_proj = self.linear(d_out)
+            return F.normalize(d_proj, p=2, dim=1)
+
+    def index_passage(self, candidate_id: str, document: str):
+        """Pre-indexes document token embeddings offline (standard ColBERT/PLAID pattern)."""
+        d_emb = self.encode_document(document)
         self._doc_index[candidate_id] = (d_emb, document.split(), document)
 
     def compute_late_interaction_maxsim(
@@ -160,21 +269,14 @@ class SovereignColBERTReranker:
             if q_emb_cached is not None:
                 q_emb = q_emb_cached
             else:
-                q_inputs = self.tokenizer(
-                    query, return_tensors="pt", truncation=True, max_length=128
-                ).to(self.device)
-                q_emb = self.model(**q_inputs).last_hidden_state[0]
-                q_emb = F.normalize(q_emb, p=2, dim=1)
+                q_emb = self.encode_query(query)
 
             if candidate_id and candidate_id in self._doc_index:
                 d_emb, doc_words, doc_text = self._doc_index[candidate_id]
             else:
-                d_inputs = self.tokenizer(
-                    document, return_tensors="pt", truncation=True, max_length=512
-                ).to(self.device)
-                d_emb = self.model(**d_inputs).last_hidden_state[0]
-                d_emb = F.normalize(d_emb, p=2, dim=1)
+                d_emb = self.encode_document(document)
                 doc_words = document.split()
+                doc_text = document
 
             # Similarity matrix: [Lq, Ld]
             sim_matrix = torch.matmul(q_emb, d_emb.transpose(0, 1))
@@ -188,7 +290,7 @@ class SovereignColBERTReranker:
             doc_hits.scatter_add_(0, best_d_indices, max_sim_per_q)
 
             # Find 50-word sliding window in document text
-            doc_words = document.split()
+            doc_words = doc_text.split()
             window_size = min(50, len(doc_words))
             best_window_score = -1.0
             best_window_start = 0
@@ -325,11 +427,15 @@ class SovereignNLIAuditor:
 class SovereignNodeSuite:
     """Orchestrator for all three sovereign nodes with unified warmups and memory management."""
 
-    def __init__(self, device: str = "cpu"):
+    def __init__(self, device: str = "cpu", models_config: Optional[Any] = None):
         self.device = device
-        self.intent_router = SovereignIntentRouter(device=device)
-        self.reranker = SovereignColBERTReranker(device=device)
-        self.auditor = SovereignNLIAuditor(device=device)
+        intent_model = getattr(models_config, "intent_model", "distilbert-base-uncased") if models_config else "distilbert-base-uncased"
+        reranker_model = getattr(models_config, "reranker_model", "colbert-ir/colbertv2.0") if models_config else "colbert-ir/colbertv2.0"
+        nli_model = getattr(models_config, "nli_model", "cross-encoder/nli-deberta-v3-base") if models_config else "cross-encoder/nli-deberta-v3-base"
+
+        self.intent_router = SovereignIntentRouter(model_id=intent_model, device=device)
+        self.reranker = SovereignColBERTReranker(model_id=reranker_model, device=device)
+        self.auditor = SovereignNLIAuditor(model_id=nli_model, device=device)
 
     def warmup(self, iterations: int = 3):
         """Warms up GPU/MPS caches to ensure statistically clean benchmark trials."""
@@ -337,5 +443,6 @@ class SovereignNodeSuite:
         dummy_d = "A company qualifies as small under section 382 if its turnover does not exceed 10.2 million pounds."
         for _ in range(iterations):
             self.intent_router.route(dummy_q)
-            self.reranker.compute_late_interaction_maxsim(dummy_q, dummy_d)
+            q_emb = self.reranker.encode_query(dummy_q)
+            self.reranker.compute_late_interaction_maxsim(dummy_q, dummy_d, q_emb_cached=q_emb)
             self.auditor.audit(dummy_d, "Turnover is capped at 10.2 million pounds under CA 2006.")

@@ -15,14 +15,14 @@ benchmark:
 
 models:
   intent_model: "distilbert-base-uncased"
-  reranker_model: "sentence-transformers/all-MiniLM-L6-v2"
+  reranker_model: "colbert-ir/colbertv2.0"
   nli_model: "cross-encoder/nli-deberta-v3-base"
   nli_fallback: "cross-encoder/nli-deberta-v3-small"
 
 pricing:
-  # TypeSafe Jev pricing tier as audited
+  # TypeSafe Jev pricing tier as audited ($0.042/1M input, $0.0/1M output)
   jev_input_cost_per_m_tokens: 0.042
-  jev_output_cost_per_m_tokens: 0.042
+  jev_output_cost_per_m_tokens: 0.0
   # Sovereign compute cost (amortized fixed server/workstation GPU)
   sovereign_marginal_cost_per_token: 0.000000
 

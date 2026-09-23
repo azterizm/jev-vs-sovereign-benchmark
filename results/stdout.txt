@@ -1,0 +1,98 @@
+╭──────────────── Memon Systems Research Suite ────────────────╮
+│ Jev System One vs. Specialized Sovereign RAG Architecture    │
+│ Empirical Pipeline Benchmark & EU AI Act Art. 15 Audit Suite │
+│                                                              │
+│ • Author:      Abdullah Memon | Memon Systems Ltd            │
+│ • Mode:        LIVE (OpenRouter API)                         │
+│ • Node:        ALL                                           │
+│ • Trials:      5 Warmup + 20 Measured Trials                 │
+│ • Local HW:    MPS (MPS/CUDA GPU Accelerated)                │
+│ • Target Model:typesafe/jev-1.13                             │
+╰──────────────────────────────────────────────────────────────╯
+
+► Executing Node 1: Intent Routing & Coordinate Extraction...
+              Node 1: Intent Routing & Statutory Entity Extraction              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                         ┃ Jev System One          ┃ My Sovereign Unit        ┃
+┃ Dimension               ┃ ('Choice')              ┃ ('DistilBERT' + NER)     ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ P50 Client Latency      │ 457.19 ms               │ 0.23 ms                  │
+│ (Wall-Clock)            │                         │                          │
+│ P50 Upstream Floor      │ 381.0 ms                │ 0.23 ms                  │
+│ (Zero WAN)              │                         │                          │
+│ P90 Latency             │ 524.53 ms               │ 40.15 ms                 │
+│ Mean Latency            │ 463.6 ms (±62.69)       │ 11.75 ms (±19.36)        │
+│ Tokens / Query          │ 453 tokens              │ 0 tokens (Local VRAM)    │
+│ Cost / Query            │ $0.000017               │ $0.00 (Fixed Hardware)   │
+│ Coordinate Extraction   │ None (Enum only)        │ Extracted (e.g. CA 2006  │
+│                         │                         │ s.382)                   │
+└─────────────────────────┴─────────────────────────┴──────────────────────────┘
+
+► Executing Node 2: Candidate Passage Reranking...
+             Node 2: Candidate Passage Reranking & Span Attribution             
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                         ┃ Jev Pairwise Scoring    ┃ My Sovereign Unit        ┃
+┃ Dimension               ┃ ('Noul')                ┃ ('ColBERT-v2' MaxSim)    ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ P50 Client Latency      │ 1813.75 ms              │ 64.21 ms                 │
+│ P50 Upstream Floor      │ 1537.5 ms               │ 64.21 ms                 │
+│ (Zero WAN)              │                         │                          │
+│ P90 Latency             │ 1919.71 ms              │ 74.82 ms                 │
+│ Token Payload           │ 1733 tokens / query     │ 0 tokens (Pre-indexed    │
+│                         │                         │ Vector)                  │
+│ Cost / Query            │ $0.000069               │ $0.00 (Fixed Hardware)   │
+│ Top-1 Accuracy          │ 100%                    │ 100%                     │
+│ Span Attribution        │ None (Opaque score)     │ 50-Word Sub-Chunk Window │
+│                         │                         │ (90% Auditor Cut)        │
+└─────────────────────────┴─────────────────────────┴──────────────────────────┘
+
+► Executing Node 3: Factual Verification & Legal NLI...
+               Node 3: Factual Verification & Legal NLI Sentinel                
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                         ┃ Jev System One          ┃ My Co-Hosted Sentinel    ┃
+┃ Dimension               ┃ ('Choice')              ┃ ('DeBERTa-v3')           ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ P50 Client Latency      │ 455.25 ms               │ 55.46 ms                 │
+│ P50 Upstream Floor      │ 385.0 ms                │ 55.46 ms                 │
+│ (Zero WAN)              │                         │                          │
+│ P90 Latency             │ 566.43 ms               │ 72.4 ms                  │
+│ Streaming Viability     │ Fails (Halts stream,    │ Native In-Flight (<25ms  │
+│                         │ 1.2k RPM limit)         │ PCIe)                    │
+│ Adversarial Probes      │ 0% Abstention           │ 100% Clean Abstention by │
+│ (*Marchwood*)           │ (Confidently Wrong)     │ Construction             │
+│ Deontic Dilution        │ Neutral / Passes        │ Enforced Contradiction   │
+│ (*shall* vs *may*)      │                         │                          │
+└─────────────────────────┴─────────────────────────┴──────────────────────────┘
+
+
+       Scale OPEX Margin Inversion (Node 2: Candidate Passage Reranking)        
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃               ┃               ┃               ┃               ┃ Monthly      ┃
+┃               ┃ Jev Daily     ┃ Jev Cost /    ┃ Sovereign     ┃ Margin       ┃
+┃ Query Scale   ┃ Tokens        ┃ Month         ┃ Marginal Cost ┃ Savings      ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ 10,000 q/day  │ 17,330,000    │ $21.84        │ $0.00         │ $21.84       │
+│ 100,000 q/day │ 173,300,000   │ $218.36       │ $0.00         │ $218.36      │
+│ 1,000,000     │ 1,733,000,000 │ $2,183.58     │ $0.00         │ $2,183.58    │
+│ q/day         │               │               │               │              │
+└───────────────┴───────────────┴───────────────┴───────────────┴──────────────┘
+╭──────────────── EU AI Act Article 15 Compliance Certificate ─────────────────╮
+│ ✔ Cryptographic Verification Seal Generated                                  │
+│ • Seal ID:            SEAL-SOV-JEV-4249AAD43719                              │
+│ • Standard:           EU AI Act Article 15 (Accuracy & Deterministic         │
+│ Robustness)                                                                  │
+│ • Master Digest:                                                             │
+│ 4249aad437198d2af93f12c318cae298d413f84989416e26a32097d1782637eb             │
+│ • Benchmark Payload:                                                         │
+│ 4dcac2b2531c614d028e37af9713f3e7c246e85abce7cac374997250cd9a5ed9             │
+│ • Dataset SHA-256:                                                           │
+│ a570d5aaa1f816263d2c4aad90b1a954539e577f65c1beaa9894d3ca28f2c56b             │
+│ • OpenRouter API ID:  gen-dec-1790149848-DKIrzvg48gqO7fJEgUFW                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+✔ Publication Report Exported: 
+/Users/abdiel/Code/jev-vs-sovereign-benchmark/results/benchmark_report.md
+✔ Raw JSON Telemetry Exported: 
+/Users/abdiel/Code/jev-vs-sovereign-benchmark/results/benchmark_telemetry.json
+✔ Execution Log Exported: 
+/Users/abdiel/Code/jev-vs-sovereign-benchmark/results/stdout.txt
+

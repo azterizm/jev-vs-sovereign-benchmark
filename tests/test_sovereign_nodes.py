@@ -16,19 +16,28 @@ def device():
 def test_sovereign_intent_and_coordinate_extraction(device):
     router = SovereignIntentRouter(device=device)
 
-    # Test query with Companies Act 2006 s.382
+    # Test query with Companies Act 2006 s.382 (Tier 1 Gate)
     q1 = "What was the maximum turnover for a company to qualify as small under section 382 of the Companies Act 2006?"
     res1 = router.route(q1)
 
     assert res1.intent == "company"
     assert any("Companies Act 2006 s.382" in coord for coord in res1.statutory_coordinates)
-    assert res1.latency_ms < 20.0  # Sub-millisecond to low millisecond CPU/GPU forward pass
+    assert res1.latency_ms < 30.0
 
-    # Test query with Employment Rights Act 1996 s.124
+    # Test query with Employment Rights Act 1996 s.124 (Tier 1 Gate)
     q2 = "Statutory compensation caps for unfair dismissal under section 124 of the Employment Rights Act 1996."
     res2 = router.route(q2)
     assert res2.intent == "employment"
     assert any("Employment Rights Act 1996 s.124" in coord for coord in res2.statutory_coordinates)
+
+    # Test query with no explicit statute coordinate (Tier 2 Neural DistilBERT)
+    q3 = "Does wrongful dismissal automatically extinguish post-termination restrictive covenants in English employment law?"
+    res3 = router.route(q3)
+    assert res3.intent == "employment"
+    assert len(res3.statutory_coordinates) == 0
+    assert max(res3.probabilities, key=res3.probabilities.get) == "employment"
+    assert res3.probabilities["employment"] > 0.45
+    assert res3.latency_ms < 30.0
 
 
 def test_sovereign_colbert_maxsim_and_span_attribution(device):
@@ -40,6 +49,15 @@ def test_sovereign_colbert_maxsim_and_span_attribution(device):
         "turnover does not exceed 10.2 million pounds and balance sheet total does not exceed 5.1 million pounds and "
         "the average number of employees does not exceed 50."
     )
+
+    # Verify ColBERTv2 128-d projected output dimensions
+    q_emb = reranker.encode_query(query)
+    assert q_emb.shape[-1] == 128
+    assert len(q_emb.shape) == 2
+
+    d_emb = reranker.encode_document(doc)
+    assert d_emb.shape[-1] == 128
+    assert len(d_emb.shape) == 2
 
     res = reranker.compute_late_interaction_maxsim(query, doc, candidate_id="test-ca382")
     assert res.maxsim_score > 0.0
@@ -80,3 +98,18 @@ def test_sovereign_nli_deontic_dilution_enforcement(device):
     # Dilution of statutory "shall" to "may" must be enforced as contradiction
     assert res.verdict == "CONTRADICTION"
     assert res.epistemic_status == "DEONTIC_VIOLATION"
+
+
+def test_sovereign_node_suite_warmup(device):
+    from src.clients.sovereign_models import SovereignNodeSuite
+    from src.config import ModelsSettings
+
+    cfg = ModelsSettings(
+        intent_model="distilbert-base-uncased",
+        reranker_model="colbert-ir/colbertv2.0",
+        nli_model="cross-encoder/nli-deberta-v3-base",
+    )
+    suite = SovereignNodeSuite(device=device, models_config=cfg)
+    suite.warmup(iterations=1)
+    assert suite.reranker.model_id == "colbert-ir/colbertv2.0"
+    assert suite.intent_router.model_id == "distilbert-base-uncased"

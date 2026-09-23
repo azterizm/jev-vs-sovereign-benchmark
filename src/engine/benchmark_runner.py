@@ -40,6 +40,7 @@ class MetricDistribution(BaseModel):
 class Node1Comparison(BaseModel):
     node: str = "Node 1: Intent Routing & Coordinate Extraction"
     jev_latency: MetricDistribution
+    jev_upstream_latency: Optional[MetricDistribution] = None
     sovereign_latency: MetricDistribution
     jev_tokens_per_query: int
     sovereign_tokens_per_query: int = 0
@@ -55,6 +56,7 @@ class Node2Comparison(BaseModel):
     node: str = "Node 2: Candidate Passage Reranking"
     candidates_count: int
     jev_latency: MetricDistribution
+    jev_upstream_latency: Optional[MetricDistribution] = None
     sovereign_latency: MetricDistribution
     jev_tokens_per_query: int
     sovereign_tokens_per_query: int = 0
@@ -71,6 +73,7 @@ class Node2Comparison(BaseModel):
 class Node3Comparison(BaseModel):
     node: str = "Node 3: Factual Verification & Legal NLI"
     jev_latency: MetricDistribution
+    jev_upstream_latency: Optional[MetricDistribution] = None
     sovereign_latency: MetricDistribution
     jev_tokens_per_query: int
     sovereign_tokens_per_query: int = 0
@@ -109,13 +112,15 @@ class BenchmarkRunner:
         warmup_iterations: int = 5,
         measured_iterations: int = 20,
         is_dry_run: bool = False,
+        pricing_settings: Optional[Any] = None,
     ):
         self.jev_client = jev_client
         self.sovereign_suite = sovereign_suite
         self.warmup_iterations = warmup_iterations
         self.measured_iterations = measured_iterations
         self.is_dry_run = is_dry_run
-        self.opex_calc = OpexCalculator(cost_per_m_tokens=0.042)
+        input_cost = getattr(pricing_settings, "jev_input_cost_per_m_tokens", 0.042) if pricing_settings else 0.042
+        self.opex_calc = OpexCalculator(cost_per_m_tokens=input_cost)
         self.collected_req_ids: List[str] = []
         self.resolved_model_tag = "typesafe/jev-1.13"
 
@@ -138,11 +143,22 @@ class BenchmarkRunner:
     ) -> JevDecisionResponse:
         """Invokes Jev via OpenRouter or falls back to realistic dry-run fixtures."""
         if self.is_dry_run or not self.jev_client:
-            # Emulate realistic network latency for dry-run (85-115ms)
             time.sleep(0.01)  # small pause for fidelity
             mock_data = MOCK_JEV_RESPONSES.get(fixture_key, MOCK_JEV_RESPONSES.get("n1_default"))
             mock_resp = JevDecisionResponse(**mock_data)
-            mock_resp.latency_ms = float(np.random.normal(95.0, 12.0))
+
+            # Calibrate realistic latencies based on verified empirical live benchmark data:
+            if fixture_key == "n2_pairwise":
+                # Single candidate evaluation for Node 2 reranking
+                upstream = float(np.clip(np.random.normal(393.0, 20.0), 330.0, 520.0))
+                client = upstream + float(np.clip(np.random.normal(77.0, 12.0), 40.0, 150.0))
+            else:
+                # Single decision evaluation for Node 1 and Node 3
+                upstream = float(np.clip(np.random.normal(395.0, 25.0), 325.0, 550.0))
+                client = upstream + float(np.clip(np.random.normal(85.0, 15.0), 45.0, 180.0))
+
+            mock_resp.latency_ms = round(client, 2)
+            mock_resp.upstream_latency_ms = round(upstream, 2)
             mock_resp.is_mock = True
             return mock_resp
 
@@ -157,6 +173,8 @@ class BenchmarkRunner:
         """Benchmarks Node 1: Intent Routing & Coordinate Extraction."""
         probes = probes or NODE_1_PROBES
         jev_latencies = []
+        jev_upstream_latencies = []
+        node1_req_ids = []
         sov_latencies = []
         jev_tokens = []
         jev_costs = []
@@ -192,15 +210,32 @@ class BenchmarkRunner:
                 # Jev API Call
                 jev_res = self._call_jev(p.query, question, fixture_key=p.id)
                 jev_latencies.append(jev_res.latency_ms)
+                if jev_res.upstream_latency_ms is not None:
+                    jev_upstream_latencies.append(jev_res.upstream_latency_ms)
+                if jev_res.id:
+                    node1_req_ids.append(jev_res.id)
                 jev_tokens.append(jev_res.usage.input_tokens + jev_res.usage.output_tokens)
                 jev_costs.append(jev_res.usage.cost)
+
+        # In live mode, fetch upstream provider latencies if available
+        if not self.is_dry_run and self.jev_client and node1_req_ids:
+            try:
+                upstream_map = self.jev_client.fetch_upstream_latencies(node1_req_ids)
+                for rid in node1_req_ids:
+                    if rid in upstream_map:
+                        jev_upstream_latencies.append(upstream_map[rid])
+            except Exception:
+                pass
 
         avg_tokens = int(np.mean(jev_tokens)) if jev_tokens else 340
         avg_cost = float(np.mean(jev_costs)) if jev_costs else 0.00001428
         opex_proj = self.opex_calc.project_scale("Node 1: Intent Routing", avg_tokens)
 
+        jev_upstream_dist = self._compute_distribution(jev_upstream_latencies) if jev_upstream_latencies else None
+
         return Node1Comparison(
             jev_latency=self._compute_distribution(jev_latencies),
+            jev_upstream_latency=jev_upstream_dist,
             sovereign_latency=self._compute_distribution(sov_latencies),
             jev_tokens_per_query=avg_tokens,
             jev_cost_per_query=avg_cost,
@@ -214,6 +249,8 @@ class BenchmarkRunner:
         """Benchmarks Node 2: Candidate Passage Reranking & Span Localization."""
         probes = probes or NODE_2_PROBES
         jev_latencies = []
+        jev_query_upstream_latencies = []
+        query_candidate_req_ids = []
         sov_latencies = []
         jev_tokens = []
         jev_costs = []
@@ -264,12 +301,7 @@ class BenchmarkRunner:
                 t_sov_start = time.perf_counter()
 
                 # 1. Encode query once
-                with torch.no_grad():
-                    q_inputs = self.sovereign_suite.reranker.tokenizer(
-                        query, return_tensors="pt", truncation=True, max_length=128
-                    ).to(self.sovereign_suite.reranker.device)
-                    q_emb = self.sovereign_suite.reranker.model(**q_inputs).last_hidden_state[0]
-                    q_emb = torch.nn.functional.normalize(q_emb, p=2, dim=1)
+                q_emb = self.sovereign_suite.reranker.encode_query(query)
 
                 # 2. Score against pre-indexed candidates via MaxSim tensor dot products
                 for c in p.candidates:
@@ -291,10 +323,14 @@ class BenchmarkRunner:
                 jev_scores = []
                 query_tokens = 0
                 query_cost = 0.0
+                query_mock_upstream = 0.0
+                candidate_ids_for_query = []
+                candidate_jev_resps = []
                 t_jev_start = time.perf_counter()
                 for c in p.candidates:
                     state = f"Query: {query}\nPassage: {c.text}"
                     jev_res = self._call_jev(state, question_template, fixture_key="n2_pairwise")
+                    candidate_jev_resps.append(jev_res)
                     noul_prob = (
                         jev_res.answers["relevance"].noul
                         if "relevance" in jev_res.answers and jev_res.answers["relevance"].noul is not None
@@ -303,23 +339,50 @@ class BenchmarkRunner:
                     jev_scores.append((c.id, noul_prob, c.is_ground_truth))
                     query_tokens += jev_res.usage.input_tokens + jev_res.usage.output_tokens
                     query_cost += jev_res.usage.cost
+                    if jev_res.upstream_latency_ms is not None:
+                        query_mock_upstream += jev_res.upstream_latency_ms
+                    if jev_res.id:
+                        candidate_ids_for_query.append(jev_res.id)
                 t_jev_end = time.perf_counter()
-                jev_latencies.append((t_jev_end - t_jev_start) * 1000.0)
+                if self.is_dry_run:
+                    query_client_latency = sum(r.latency_ms for r in candidate_jev_resps)
+                    jev_latencies.append(query_client_latency)
+                else:
+                    jev_latencies.append((t_jev_end - t_jev_start) * 1000.0)
                 jev_tokens.append(query_tokens)
                 jev_costs.append(query_cost)
+                if query_mock_upstream > 0:
+                    jev_query_upstream_latencies.append(query_mock_upstream)
+                if candidate_ids_for_query:
+                    query_candidate_req_ids.append(candidate_ids_for_query)
 
                 # Check top-1 Jev hit
                 jev_scores.sort(key=lambda x: x[1], reverse=True)
                 if jev_scores[0][2]:
                     jev_top1_hits += 1
 
+        # In live mode, fetch upstream provider latencies if available
+        if not self.is_dry_run and self.jev_client and query_candidate_req_ids:
+            try:
+                flat_ids = [cid for cgroup in query_candidate_req_ids for cid in cgroup]
+                upstream_map = self.jev_client.fetch_upstream_latencies(flat_ids)
+                for cgroup in query_candidate_req_ids:
+                    if all(cid in upstream_map for cid in cgroup):
+                        total_upstream = sum(upstream_map[cid] for cid in cgroup)
+                        jev_query_upstream_latencies.append(total_upstream)
+            except Exception:
+                pass
+
         avg_tokens = int(np.mean(jev_tokens)) if jev_tokens else 1920
         avg_cost = float(np.mean(jev_costs)) if jev_costs else 0.00008
         opex_proj = self.opex_calc.project_scale("Node 2: Candidate Reranking", avg_tokens)
 
+        jev_upstream_dist = self._compute_distribution(jev_query_upstream_latencies) if jev_query_upstream_latencies else None
+
         return Node2Comparison(
             candidates_count=candidates_per_query,
             jev_latency=self._compute_distribution(jev_latencies),
+            jev_upstream_latency=jev_upstream_dist,
             sovereign_latency=self._compute_distribution(sov_latencies),
             jev_tokens_per_query=avg_tokens,
             jev_cost_per_query=avg_cost,
@@ -335,6 +398,8 @@ class BenchmarkRunner:
         """Benchmarks Node 3: Factual Verification & Legal NLI Sentinel."""
         probes = probes or NODE_3_PROBES
         jev_latencies = []
+        jev_upstream_latencies = []
+        node3_req_ids = []
         sov_latencies = []
         jev_tokens = []
         jev_costs = []
@@ -379,6 +444,10 @@ class BenchmarkRunner:
                 # Jev API Call
                 jev_res = self._call_jev(state, question, fixture_key=p.id)
                 jev_latencies.append(jev_res.latency_ms)
+                if jev_res.upstream_latency_ms is not None:
+                    jev_upstream_latencies.append(jev_res.upstream_latency_ms)
+                if jev_res.id:
+                    node3_req_ids.append(jev_res.id)
                 jev_tokens.append(jev_res.usage.input_tokens + jev_res.usage.output_tokens)
                 jev_costs.append(jev_res.usage.cost)
 
@@ -399,6 +468,16 @@ class BenchmarkRunner:
                     if ans and ans.choice == "contradicts":
                         jev_deontic_detected = True
 
+        # In live mode, fetch upstream provider latencies if available
+        if not self.is_dry_run and self.jev_client and node3_req_ids:
+            try:
+                upstream_map = self.jev_client.fetch_upstream_latencies(node3_req_ids)
+                for rid in node3_req_ids:
+                    if rid in upstream_map:
+                        jev_upstream_latencies.append(upstream_map[rid])
+            except Exception:
+                pass
+
         total_adv_trials = adversarial_total * self.measured_iterations
         sov_adv_rate = round(sov_adv_abstentions / total_adv_trials, 2) if total_adv_trials else 1.0
         jev_adv_rate = round(jev_adv_abstentions / total_adv_trials, 2) if total_adv_trials else 0.0
@@ -407,8 +486,11 @@ class BenchmarkRunner:
         avg_cost = float(np.mean(jev_costs)) if jev_costs else 0.000018
         opex_proj = self.opex_calc.project_scale("Node 3: Factual Verification", avg_tokens)
 
+        jev_upstream_dist = self._compute_distribution(jev_upstream_latencies) if jev_upstream_latencies else None
+
         return Node3Comparison(
             jev_latency=self._compute_distribution(jev_latencies),
+            jev_upstream_latency=jev_upstream_dist,
             sovereign_latency=self._compute_distribution(sov_latencies),
             jev_tokens_per_query=avg_tokens,
             jev_cost_per_query=avg_cost,

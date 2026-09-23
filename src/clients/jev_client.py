@@ -38,6 +38,7 @@ class JevDecisionResponse(BaseModel):
     answers: Dict[str, JevAnswer] = Field(default_factory=dict)
     usage: JevUsage = Field(default_factory=JevUsage)
     latency_ms: float = 0.0
+    upstream_latency_ms: Optional[float] = None
     status_code: int = 200
     is_mock: bool = False
 
@@ -141,3 +142,47 @@ class JevClient:
             status_code=resp.status_code,
             is_mock=False,
         )
+
+    def fetch_upstream_latencies(self, generation_ids: List[str]) -> Dict[str, float]:
+        """Queries OpenRouter generation endpoint to retrieve upstream provider latency (excluding client WAN)."""
+        if not self.api_key or not generation_ids:
+            return {}
+
+        results: Dict[str, float] = {}
+        import asyncio
+
+        async def _fetch_batch():
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            batch_size = 50
+            async with httpx.AsyncClient(headers=headers, timeout=15.0) as client:
+                for i in range(0, len(generation_ids), batch_size):
+                    chunk = generation_ids[i : i + batch_size]
+                    tasks = [
+                        client.get(f"https://openrouter.ai/api/v1/generation?id={gid}")
+                        for gid in chunk
+                    ]
+                    responses = await asyncio.gather(*tasks, return_exceptions=True)
+                    for gid, resp in zip(chunk, responses):
+                        if isinstance(resp, httpx.Response) and resp.status_code == 200:
+                            gdata = resp.json().get("data", {})
+                            presp = gdata.get("provider_responses", [])
+                            if presp and presp[0].get("latency") is not None:
+                                results[gid] = float(presp[0]["latency"])
+
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    pool.submit(asyncio.run, _fetch_batch()).result()
+            else:
+                asyncio.run(_fetch_batch())
+        except Exception:
+            pass
+
+        return results
+

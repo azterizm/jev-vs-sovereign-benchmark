@@ -30,7 +30,7 @@ from src.engine.audit_seal import AuditSealer
 from src.reporting.markdown_reporter import BenchmarkReporter
 from src.dataset.legal_battery import NODE_1_PROBES, NODE_2_PROBES, NODE_3_PROBES
 
-console = Console()
+console = Console(record=True)
 
 
 def parse_args():
@@ -77,6 +77,12 @@ def parse_args():
         type=str,
         default="results/benchmark_telemetry.json",
         help="Path to export raw telemetry and seal JSON.",
+    )
+    parser.add_argument(
+        "--export-stdout",
+        type=str,
+        default="results/stdout.txt",
+        help="Path to export console stdout text log.",
     )
     return parser.parse_args()
 
@@ -133,7 +139,7 @@ def main():
         transient=True,
     ) as progress:
         progress.add_task("Initializing local sovereign models (PyTorch / MPS)...", total=None)
-        sovereign_suite = SovereignNodeSuite(device=device)
+        sovereign_suite = SovereignNodeSuite(device=device, models_config=settings.models)
         sovereign_suite.warmup(iterations=2)
 
     runner = BenchmarkRunner(
@@ -142,6 +148,7 @@ def main():
         warmup_iterations=warmup_iters,
         measured_iterations=measured_iters,
         is_dry_run=is_dry_run,
+        pricing_settings=settings.pricing,
     )
 
     result = BenchmarkSuiteResult(
@@ -173,7 +180,9 @@ def main():
         t1.add_column("Dimension", style="bold white")
         t1.add_column("Jev System One ('Choice')", style="yellow")
         t1.add_column("My Sovereign Unit ('DistilBERT' + NER)", style="green")
-        t1.add_row("P50 Latency", f"{n1.jev_latency.p50_ms} ms", f"{n1.sovereign_latency.p50_ms} ms")
+        t1.add_row("P50 Client Latency (Wall-Clock)", f"{n1.jev_latency.p50_ms} ms", f"{n1.sovereign_latency.p50_ms} ms")
+        if n1.jev_upstream_latency:
+            t1.add_row("P50 Upstream Floor (Zero WAN)", f"{n1.jev_upstream_latency.p50_ms} ms", f"{n1.sovereign_latency.p50_ms} ms")
         t1.add_row("P90 Latency", f"{n1.jev_latency.p90_ms} ms", f"{n1.sovereign_latency.p90_ms} ms")
         t1.add_row("Mean Latency", f"{n1.jev_latency.mean_ms} ms (±{n1.jev_latency.std_ms})", f"{n1.sovereign_latency.mean_ms} ms (±{n1.sovereign_latency.std_ms})")
         t1.add_row("Tokens / Query", f"{n1.jev_tokens_per_query} tokens", "0 tokens (Local VRAM)")
@@ -197,7 +206,9 @@ def main():
         t2.add_column("Dimension", style="bold white")
         t2.add_column("Jev Pairwise Scoring ('Noul')", style="yellow")
         t2.add_column("My Sovereign Unit ('ColBERT-v2' MaxSim)", style="green")
-        t2.add_row("P50 Latency", f"{n2.jev_latency.p50_ms} ms", f"{n2.sovereign_latency.p50_ms} ms")
+        t2.add_row("P50 Client Latency", f"{n2.jev_latency.p50_ms} ms", f"{n2.sovereign_latency.p50_ms} ms")
+        if n2.jev_upstream_latency:
+            t2.add_row("P50 Upstream Floor (Zero WAN)", f"{n2.jev_upstream_latency.p50_ms} ms", f"{n2.sovereign_latency.p50_ms} ms")
         t2.add_row("P90 Latency", f"{n2.jev_latency.p90_ms} ms", f"{n2.sovereign_latency.p90_ms} ms")
         t2.add_row("Token Payload", f"{n2.jev_tokens_per_query} tokens / query", "0 tokens (Pre-indexed Vector)")
         t2.add_row("Cost / Query", f"${n2.jev_cost_per_query:.6f}", "$0.00 (Fixed Hardware)")
@@ -221,7 +232,9 @@ def main():
         t3.add_column("Dimension", style="bold white")
         t3.add_column("Jev System One ('Choice')", style="yellow")
         t3.add_column("My Co-Hosted Sentinel ('DeBERTa-v3')", style="green")
-        t3.add_row("P50 Latency", f"{n3.jev_latency.p50_ms} ms", f"{n3.sovereign_latency.p50_ms} ms")
+        t3.add_row("P50 Client Latency", f"{n3.jev_latency.p50_ms} ms", f"{n3.sovereign_latency.p50_ms} ms")
+        if n3.jev_upstream_latency:
+            t3.add_row("P50 Upstream Floor (Zero WAN)", f"{n3.jev_upstream_latency.p50_ms} ms", f"{n3.sovereign_latency.p50_ms} ms")
         t3.add_row("P90 Latency", f"{n3.jev_latency.p90_ms} ms", f"{n3.sovereign_latency.p90_ms} ms")
         t3.add_row("Streaming Viability", "[red]Fails (Halts stream, 1.2k RPM limit)[/red]", "[green]Native In-Flight (<25ms PCIe)[/green]")
         t3.add_row("Adversarial Probes (*Marchwood*)", f"[red]{int(n3.jev_adversarial_abstention_rate * 100)}% Abstention (Confidently Wrong)[/red]", f"[green]{int(n3.sovereign_adversarial_abstention_rate * 100)}% Clean Abstention by Construction[/green]")
@@ -295,7 +308,14 @@ def main():
     }
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(export_payload, f, indent=2)
-    console.print(f"[bold green]✔ Raw JSON Telemetry Exported:[/bold green] [underline]{json_path.resolve()}[/underline]\n")
+    console.print(f"[bold green]✔ Raw JSON Telemetry Exported:[/bold green] [underline]{json_path.resolve()}[/underline]")
+
+    # Export Plaintext Console Stdout Log
+    if getattr(args, "export_stdout", None):
+        stdout_path = Path(args.export_stdout)
+        stdout_path.parent.mkdir(parents=True, exist_ok=True)
+        console.print(f"[bold green]✔ Execution Log Exported:[/bold green] [underline]{stdout_path.resolve()}[/underline]\n")
+        console.save_text(str(stdout_path))
 
 
 if __name__ == "__main__":

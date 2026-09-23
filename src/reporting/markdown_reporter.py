@@ -86,10 +86,22 @@ class BenchmarkReporter:
                 "before dense retrieval begins."
             )
             doc.append("")
+            doc.append(
+                "> [!NOTE]  \n"
+                "> **Authoritative Dual-Latency Methodology:**  \n"
+                "> In addition to total client wall-clock HTTP latency, Jev measurements include the **Upstream Cloud Floor** "
+                "retrieved from OpenRouter's generation telemetry (`provider_responses[0].latency`). This represents the exact server-to-server "
+                "transit between OpenRouter's edge and TypeSafe's inference cluster, **completely eliminating client broadband WAN transit**."
+            )
+            doc.append("")
             doc.append("| Metric Dimension | Jev System One (`Choice`) | My Specialized Sovereign Unit (`DistilBERT` + NER) | Architectural Impact |")
             doc.append("| :--- | :--- | :--- | :--- |")
-            doc.append(f"| **P50 Latency** | **{n1.jev_latency.p50_ms} ms** | **{n1.sovereign_latency.p50_ms} ms** | My sovereign unit is **{round(n1.jev_latency.p50_ms / max(0.01, n1.sovereign_latency.p50_ms), 1)}x faster**. |")
-            doc.append(f"| **P90 / P99 Latency** | **{n1.jev_latency.p90_ms} ms / {n1.jev_latency.p99_ms} ms** | **{n1.sovereign_latency.p90_ms} ms / {n1.sovereign_latency.p99_ms} ms** | Jev incurs TLS handshakes and queue jitter before retrieval starts. |")
+            doc.append(f"| **P50 Client Latency (Wall-Clock)** | **{n1.jev_latency.p50_ms} ms** | **{n1.sovereign_latency.p50_ms} ms** | My sovereign unit is **{round(n1.jev_latency.p50_ms / max(0.01, n1.sovereign_latency.p50_ms), 1)}x faster** (Full HTTP roundtrip). |")
+            if n1.jev_upstream_latency:
+                up_p50 = n1.jev_upstream_latency.p50_ms
+                speedup_up = round(up_p50 / max(0.01, n1.sovereign_latency.p50_ms), 1)
+                doc.append(f"| **P50 Upstream Floor (Zero Client WAN)** | **{up_p50} ms** | **{n1.sovereign_latency.p50_ms} ms** | Stripping client WAN entirely, Jev's cloud serving floor is **{speedup_up}x slower**. |")
+            doc.append(f"| **P90 / P99 Latency (Client)** | {n1.jev_latency.p90_ms} ms / {n1.jev_latency.p99_ms} ms | {n1.sovereign_latency.p90_ms} ms / {n1.sovereign_latency.p99_ms} ms | Jev incurs TLS handshakes and queue jitter before retrieval starts. |")
             doc.append(f"| **Mean Latency (± Std)** | {n1.jev_latency.mean_ms} ms (±{n1.jev_latency.std_ms}) | {n1.sovereign_latency.mean_ms} ms (±{n1.sovereign_latency.std_ms}) | Sub-millisecond local forward pass eliminates network variance. |")
             doc.append(f"| **Tokens per Query** | {n1.jev_tokens_per_query} tokens | **0 tokens** (Local VRAM) | Cloud API reintroduces per-query billing into software routing. |")
             doc.append(f"| **Coordinate Extraction (NER)** | **Unsupported** (Categorical enum only) | **Native Extraction** (`ukpga/.../s382`) | Jev cannot extract statutory coordinates for partition pruning. |")
@@ -108,8 +120,12 @@ class BenchmarkReporter:
             doc.append("")
             doc.append("| Metric Dimension | Jev Pairwise Scoring (`Noul`) | My Sovereign Late-Interaction (`ColBERT-v2` $MaxSim$) | Architectural Impact |")
             doc.append("| :--- | :--- | :--- | :--- |")
-            doc.append(f"| **P50 Latency ({n2.candidates_count} candidates)** | **{n2.jev_latency.p50_ms} ms** | **{n2.sovereign_latency.p50_ms} ms** | ColBERT tensor dot products run **{round(n2.jev_latency.p50_ms / max(0.01, n2.sovereign_latency.p50_ms), 1)}x faster** on GPU. |")
-            doc.append(f"| **P90 Latency** | {n2.jev_latency.p90_ms} ms | {n2.sovereign_latency.p90_ms} ms | Network roundtrips compound linearly per candidate passage. |")
+            doc.append(f"| **P50 Client Latency ({n2.candidates_count} candidates)** | **{n2.jev_latency.p50_ms} ms** | **{n2.sovereign_latency.p50_ms} ms** | ColBERT tensor dot products run **{round(n2.jev_latency.p50_ms / max(0.01, n2.sovereign_latency.p50_ms), 1)}x faster** on GPU. |")
+            if n2.jev_upstream_latency:
+                up_p50 = n2.jev_upstream_latency.p50_ms
+                speedup_up = round(up_p50 / max(0.01, n2.sovereign_latency.p50_ms), 1)
+                doc.append(f"| **P50 Upstream Floor ({n2.candidates_count} candidates)** | **{up_p50} ms** | **{n2.sovereign_latency.p50_ms} ms** | Pure datacenter compute floor across {n2.candidates_count} candidates is **{speedup_up}x slower** than local GPU. |")
+            doc.append(f"| **P90 Latency (Client)** | {n2.jev_latency.p90_ms} ms | {n2.sovereign_latency.p90_ms} ms | Network roundtrips compound linearly per candidate passage. |")
             doc.append(f"| **Token Consumption** | **{n2.jev_tokens_per_query} tokens / query** | **0 tokens** (Tensor index) | Massive token explosion across candidate shortlists. |")
             doc.append(f"| **Top-1 Ranking Accuracy** | {int(n2.jev_top1_accuracy * 100)}% | **{int(n2.sovereign_top1_accuracy * 100)}%** | Dedicated retrieval models outperform generic cross-encoder emulators. |")
             doc.append(f"| **Sub-Chunk Span Attribution** | **None** (Opaque scalar score) | **50-Word Localized Span** | **Cuts downstream NLI auditor compute by 90%**. |")
@@ -126,7 +142,11 @@ class BenchmarkReporter:
             doc.append("")
             doc.append("| Metric Dimension | Jev System One (`Choice`) | My Co-Hosted Sovereign Sentinel (`DeBERTa-v3`) | Architectural Impact |")
             doc.append("| :--- | :--- | :--- | :--- |")
-            doc.append(f"| **In-Flight Sentinel Latency** | **{n3.jev_latency.p50_ms} ms** (P50) | **{n3.sovereign_latency.p50_ms} ms** (P50) | Jev pauses sentence streaming at every period, causing visible stutter. |")
+            doc.append(f"| **In-Flight Sentinel Latency (Client P50)** | **{n3.jev_latency.p50_ms} ms** | **{n3.sovereign_latency.p50_ms} ms** | Jev pauses sentence streaming at every period, causing visible stutter. |")
+            if n3.jev_upstream_latency:
+                up_p50 = n3.jev_upstream_latency.p50_ms
+                speedup_up = round(up_p50 / max(0.01, n3.sovereign_latency.p50_ms), 1)
+                doc.append(f"| **Upstream Cloud Floor (Zero WAN P50)** | **{up_p50} ms** | **{n3.sovereign_latency.p50_ms} ms** | Datacenter inference floor alone takes **{speedup_up}x longer** than co-hosted DeBERTa. |")
             doc.append(f"| **In-Flight Streaming Viability** | **Fails** (Rate limit: 1,200 RPM) | **Native** (Bound only by GPU memory) | 120 concurrent streams hitting Jev throw HTTP 429 mid-generation. |")
             doc.append(f"| **Adversarial Probes (*Marchwood*)** | **{int(n3.jev_adversarial_abstention_rate * 100)}% Abstention** (Confidently Wrong) | **{int(n3.sovereign_adversarial_abstention_rate * 100)}% Clean Abstention** | Jev outputs high confidence on fluent fabrications; my gate halts retrieval. |")
             doc.append(f"| **Deontic Logic (*shall* vs *may*)** | {'Detected' if n3.jev_deontic_dilution_detected else 'Fails / Neutral'} | **{'Enforced (Contradiction)' if n3.sovereign_deontic_dilution_detected else 'Detected'}** | My fine-tuned head penalizes statutory duty dilution as fatal contradictions. |")
